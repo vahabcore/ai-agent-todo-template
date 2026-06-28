@@ -3,10 +3,6 @@ import {
     MessagesAnnotation,
 } from "@langchain/langgraph";
 
-/* -------------------------------------------------------------------------- */
-/*                                Graph State                                 */
-/* -------------------------------------------------------------------------- */
-
 export const TodoState = Annotation.Root({
 
     /**
@@ -28,5 +24,4 @@ export const TodoState = Annotation.Root({
      * User session (optional)
      */
     userId: Annotation<string | null>(),
-
 });

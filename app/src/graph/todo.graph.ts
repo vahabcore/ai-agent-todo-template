@@ -18,36 +18,25 @@ function shouldContinue(state: typeof TodoState.State) {
 export function createTodoGraph(
     llm: Runnable
 ) {
-
     async function callModel(state: typeof TodoState.State) {
-
         const response =
             await llm.invoke(state.messages);
-
         return {
             messages: [response],
         };
 
     }
-
     const toolNode =
         new ToolNode(todoTools);
-
     return new StateGraph(TodoState)
-
         .addNode("agent", callModel)
-
         .addNode("tools", toolNode)
-
         .addEdge(START, "agent")
-
         .addConditionalEdges(
             "agent",
             shouldContinue
         )
-
         .addEdge("tools", "agent")
-
         .compile();
 
 }

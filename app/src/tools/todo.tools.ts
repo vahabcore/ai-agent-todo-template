@@ -12,10 +12,6 @@ import {
     BulkUpdateTasksSchema,
 } from "../schemas/todo.schema";
 
-/* -------------------------------------------------------------------------- */
-/*                               Create Task                                  */
-/* -------------------------------------------------------------------------- */
-
 export const createTaskTool = tool(
     async (input) => {
         return await todoService.createTask(input);
@@ -35,10 +31,6 @@ Use this tool whenever the user wants to:
         schema: CreateTaskSchema,
     }
 );
-
-/* -------------------------------------------------------------------------- */
-/*                                Get Tasks                                   */
-/* -------------------------------------------------------------------------- */
 
 export const getTasksTool = tool(
     async (input) => {
@@ -61,10 +53,6 @@ Examples:
     }
 );
 
-/* -------------------------------------------------------------------------- */
-/*                              Search Tasks                                  */
-/* -------------------------------------------------------------------------- */
-
 export const searchTasksTool = tool(
     async (input) => {
         return await todoService.searchTasks(input);
@@ -82,10 +70,6 @@ Examples:
         schema: SearchTaskSchema,
     }
 );
-
-/* -------------------------------------------------------------------------- */
-/*                               Update Task                                  */
-/* -------------------------------------------------------------------------- */
 
 export const updateTaskTool = tool(
     async (input) => {
@@ -107,10 +91,6 @@ Examples:
     }
 );
 
-/* -------------------------------------------------------------------------- */
-/*                              Complete Task                                 */
-/* -------------------------------------------------------------------------- */
-
 export const completeTaskTool = tool(
     async (input) => {
         return await todoService.completeTask(input);
@@ -124,10 +104,6 @@ Mark a task as completed or reopen it.
     }
 );
 
-/* -------------------------------------------------------------------------- */
-/*                               Delete Task                                  */
-/* -------------------------------------------------------------------------- */
-
 export const deleteTaskTool = tool(
     async (input) => {
         return await todoService.deleteTask(input);
@@ -140,10 +116,6 @@ Delete a task by its ID.
         schema: DeleteTaskSchema,
     }
 );
-
-/* -------------------------------------------------------------------------- */
-/*                            Bulk Update Tasks                               */
-/* -------------------------------------------------------------------------- */
 
 export const bulkUpdateTasksTool = tool(
     async (input) => {
@@ -163,10 +135,6 @@ Examples:
     }
 );
 
-/* -------------------------------------------------------------------------- */
-/*                               Statistics                                   */
-/* -------------------------------------------------------------------------- */
-
 export const getStatisticsTool = tool(
     async () => {
         return await todoService.getStatistics();
@@ -183,10 +151,6 @@ Examples:
 `,
     }
 );
-
-/* -------------------------------------------------------------------------- */
-/*                                Export                                      */
-/* -------------------------------------------------------------------------- */
 
 export const todoTools = [
     createTaskTool,
