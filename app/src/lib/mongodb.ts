@@ -29,14 +29,27 @@ if (!global.mongoose) {
 
 export async function dbConnect(): Promise<typeof mongoose> {
     if (cached.conn) {
+        console.log("➡️ Using existing database connection (cached)");
         return cached.conn;
     }
 
     if (!cached.promise) {
-        cached.promise = mongoose.connect(MONGODB_URI).then((mongoose) => mongoose);
+        console.log("🚀 Creating a new connection promise...");
+        cached.promise = mongoose.connect(MONGODB_URI).then((mongoose) => {
+            console.log("✅ MongoDB successfully connected!");
+            return mongoose;
+        });
+    } else {
+        console.log("⏳ Waiting for an existing connection promise to resolve...");
     }
 
-    cached.conn = await cached.promise;
+    try {
+        cached.conn = await cached.promise;
+    } catch (e) {
+        console.error("❌ MongoDB connection error:", e);
+        cached.promise = null; // Clear promise on error so Next.js tries again
+        throw e;
+    }
 
     return cached.conn;
 }

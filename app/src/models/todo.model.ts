@@ -61,6 +61,5 @@ const todoSchema = new Schema(
 
 todoSchema.index({ title: "text", description: "text" });
 export type TodoDocument = InferSchemaType<typeof todoSchema>;
-const Todo =
-    models.Todo || model("Todo", todoSchema);
+const Todo = models.Todo || model("Todo", todoSchema);
 export default Todo;

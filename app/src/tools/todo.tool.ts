@@ -14,7 +14,8 @@ import {
 
 export const createTaskTool = tool(
     async (input) => {
-        return await todoService.createTask(input);
+        const result = await todoService.createTask(input);
+        return JSON.stringify(result);
     },
     {
         name: "create_task",
@@ -34,7 +35,8 @@ Use this tool whenever the user wants to:
 
 export const getTasksTool = tool(
     async (input) => {
-        return await todoService.getTasks(input);
+        const result = await todoService.getTasks(input);
+        return JSON.stringify(result);
     },
     {
         name: "get_tasks",
@@ -55,7 +57,8 @@ Examples:
 
 export const searchTasksTool = tool(
     async (input) => {
-        return await todoService.searchTasks(input);
+        const result = await todoService.searchTasks(input);
+        return JSON.stringify(result);
     },
     {
         name: "search_tasks",
@@ -73,7 +76,8 @@ Examples:
 
 export const updateTaskTool = tool(
     async (input) => {
-        return await todoService.updateTask(input);
+        const result = await todoService.updateTask(input);
+        return JSON.stringify(result);
     },
     {
         name: "update_task",
@@ -93,7 +97,8 @@ Examples:
 
 export const completeTaskTool = tool(
     async (input) => {
-        return await todoService.completeTask(input);
+        const result = await todoService.completeTask(input);
+        return JSON.stringify(result);
     },
     {
         name: "complete_task",
@@ -106,7 +111,8 @@ Mark a task as completed or reopen it.
 
 export const deleteTaskTool = tool(
     async (input) => {
-        return await todoService.deleteTask(input);
+        const result = await todoService.deleteTask(input);
+        return JSON.stringify(result);
     },
     {
         name: "delete_task",
@@ -119,7 +125,8 @@ Delete a task by its ID.
 
 export const bulkUpdateTasksTool = tool(
     async (input) => {
-        return await todoService.bulkUpdateTasks(input);
+        const result = await todoService.bulkUpdateTasks(input);
+        return JSON.stringify(result);
     },
     {
         name: "bulk_update_tasks",
@@ -137,7 +144,8 @@ Examples:
 
 export const getStatisticsTool = tool(
     async () => {
-        return await todoService.getStatistics();
+        const result = await todoService.getStatistics();
+        return JSON.stringify(result);
     },
     {
         name: "get_statistics",
