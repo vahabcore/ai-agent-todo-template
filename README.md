@@ -4,6 +4,10 @@ A modern, agentic Todo application template powered by **Next.js**, **LangGraph*
 
 This template demonstrates how to build a stateful, capable AI agent that can autonomously manage your tasks—creating, updating, searching, and deleting them—using a natural language interface. Instead of just answering questions, the agent actively orchestrates tools and database operations via LangGraph's state machine to accomplish your goals.
 
+## 🎥 Demo
+
+<video src="public/demo-ai-todo-template.mp4" controls width="100%" autoplay loop muted></video>
+
 ---
 
 ## ✨ Features
