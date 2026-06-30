@@ -1,43 +1,45 @@
-import { Runnable } from "@langchain/core/runnables";
-import { StateGraph, START, END, MemorySaver } from "@langchain/langgraph";
+import { END, MemorySaver, START, StateGraph } from "@langchain/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { SystemMessage } from "@langchain/core/messages";
-import { TodoState } from "./state";
+import { AIMessage } from "@langchain/core/messages";
+import { Runnable } from "@langchain/core/runnables";
+import { TodoState, TodoStateType } from "./state";
 import { todoTools } from "../tools/todo.tool";
 
 const memory = new MemorySaver();
 
-function shouldContinue(state: typeof TodoState.State) {
-    const messages = state.messages;
-    const lastMessage = messages[messages.length - 1];
-    if ("tool_calls" in lastMessage && (lastMessage as any).tool_calls?.length) {
-        return "tools";
-    }
-    return END;
+const SYSTEM_PROMPT = new SystemMessage(`
+You are a focused, professional Todo Assistant.
+
+Rules you MUST follow:
+1. ALWAYS use tools to read or mutate tasks — never invent or hallucinate task data.
+2. When you need to call a tool, emit ONLY the tool call. No filler like "Sure, let me…".
+3. After a tool returns, summarise the result clearly in plain English. Do NOT dump raw JSON.
+4. If a user asks to update or delete a task but you don't have its ID, call get_tasks or
+   search_tasks first, then proceed with the correct ID.
+5. When listing tasks, group and format them clearly. Use markdown lists.
+6. Be concise. One clear sentence is better than a paragraph.
+`.trim());
+
+
+function shouldContinue(state: TodoStateType): "tools" | typeof END {
+   const lastMessage = state.messages.at(-1) as AIMessage | undefined;
+   return lastMessage?.tool_calls?.length ? "tools" : END;
 }
 
 export function createTodoGraph(llm: Runnable) {
-    async function callModel(state: typeof TodoState.State) {
-        const systemPrompt = new SystemMessage(`
-            You are a helpful, professional Todo Assistant.
-            You have access to tools to manage the user's tasks.
-            When a tool returns data, read it and summarize it for the user in natural, conversational language.
-            NEVER show the user raw JSON, tool parameters, or command syntax. 
-            Just give them the final answer directly.
-        `);
+   const toolNode = new ToolNode([...todoTools]);
 
-        const response = await llm.invoke([systemPrompt, ...state.messages]);
-        return { messages: [response] };
-    }
+   async function callModel(state: TodoStateType) {
+      const response = await llm.invoke([SYSTEM_PROMPT, ...state.messages]);
+      return { messages: [response] };
+   }
 
-    const toolNode = new ToolNode(todoTools);
-
-    return new StateGraph(TodoState)
-        .addNode("agent", callModel)
-        .addNode("tools", toolNode)
-        .addEdge(START, "agent")
-        .addConditionalEdges("agent", shouldContinue)
-        .addEdge("tools", "agent")
-        // 3. Attach the memory checkpointer during compile
-        .compile({ checkpointer: memory });
+   return new StateGraph(TodoState)
+      .addNode("agent", callModel)
+      .addNode("tools", toolNode)
+      .addEdge(START, "agent")
+      .addConditionalEdges("agent", shouldContinue)
+      .addEdge("tools", "agent")
+      .compile({ checkpointer: memory });
 }

@@ -1,53 +1,59 @@
 import { HumanMessage } from "@langchain/core/messages";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
-import { todoTools } from "../tools/todo.tool";
-import { TOOL_CATALOG, ToolSelectionSchema } from "../tools/selector.tool";
+import { todoTools, TodoToolName } from "../tools/todo.tool";
+import { TOOL_CATALOG, ToolSelectionSchema, ToolSelection } from "../tools/selector.tool";
 import { createTodoGraph } from "../graph/todo.graph";
 import { ollama } from "../lib/llm";
 
+
 const routerLlm = ollama.withStructuredOutput(ToolSelectionSchema);
 
-export async function chat(message: string, threadId: string) {
+const routerPrompt = ChatPromptTemplate.fromMessages([
+    [
+        "system",
+        "You are a routing assistant. Given the user's message, select which tools " +
+        "are needed from the catalog below to fulfill the request.\n\n" +
+        "Tool catalog:\n{tool_catalog}\n\n" +
+        "Rules:\n" +
+        "- Only pick tools that are directly needed.\n" +
+        "- Return an empty array for conversational messages with no task actions.",
+    ],
+    ["human", "{input}"],
+]);
 
-    const routerPrompt = ChatPromptTemplate.fromMessages([
-        [
-            "system",
-            `You are a smart routing assistant. Look at the user's request and decide which tools are needed to fulfill it. 
-             Here are the available tools: {tool_catalog}
-             Only select the tools that are absolutely necessary. If no tools are needed, return an empty array.`
-        ],
-        ["user", "{input}"]
-    ]);
+const routerChain = routerPrompt.pipe(routerLlm);
 
-    const routerChain = routerPrompt.pipe(routerLlm);
+export async function chat(
+    message: string,
+    threadId: string
+): Promise<{ selectedTools: string[]; stream: AsyncIterable<unknown> }> {
 
-    const routingDecision = await routerChain.invoke({
+    const routing: ToolSelection = await routerChain.invoke({
         input: message,
-        tool_catalog: JSON.stringify(TOOL_CATALOG, null, 2)
+        tool_catalog: JSON.stringify(TOOL_CATALOG, null, 2),
     });
 
-    const selectedToolNames = routingDecision.selectedTools || [];
-    console.log(`AI selected tools: ${selectedToolNames.join(", ")}`);
+    const selectedToolNames: string[] = routing.selectedTools ?? [];
+    console.log(`[router] selected: [${selectedToolNames.join(", ") || "none"}]`);
 
-    let optimizedModel;
-    if (selectedToolNames.length > 0) {
-        const activeTools = todoTools.filter(tool =>
-            selectedToolNames.includes(tool.name)
-        );
-        optimizedModel = ollama.bindTools(activeTools);
-    } else {
-        optimizedModel = ollama;
-    }
+    const activeLlm =
+        selectedToolNames.length > 0
+            ? ollama.bindTools(
+                todoTools.filter((t): t is (typeof todoTools)[number] =>
+                    selectedToolNames.includes(t.name as TodoToolName)
+                )
+            )
+            : ollama;
 
-    const todoAgent = createTodoGraph(optimizedModel);
+    const graph = createTodoGraph(activeLlm);
 
-    const eventStream = await todoAgent.streamEvents(
+    const stream = graph.streamEvents(
         { messages: [new HumanMessage(message)] },
         {
             version: "v2",
-            configurable: { thread_id: threadId }
+            configurable: { thread_id: threadId },
         }
     );
 
-    return eventStream;
+    return { selectedTools: selectedToolNames, stream };
 }

@@ -1,7 +1,6 @@
 import { tool } from "@langchain/core/tools";
-
+import { z } from "zod";
 import todoService from "../services/todo.service";
-
 import {
     CreateTaskSchema,
     UpdateTaskSchema,
@@ -12,151 +11,134 @@ import {
     BulkUpdateTasksSchema,
 } from "../schemas/todo.schema";
 
+/* ─────────────────────────────────────────────────────────────
+   HELPER
+   Serialises a result to JSON and converts thrown errors into
+   a structured { error } response so the LLM can self-correct
+   instead of crashing the graph node.
+───────────────────────────────────────────────────────────── */
+function toJson(value: unknown): string {
+    return JSON.stringify(value);
+}
+
+function errorJson(err: unknown): string {
+    const message = err instanceof Error ? err.message : "An unknown error occurred.";
+    return JSON.stringify({ error: message });
+}
+
+//    TOOLS
 export const createTaskTool = tool(
     async (input) => {
-        const result = await todoService.createTask(input);
-        return JSON.stringify(result);
+        try { return toJson(await todoService.createTask(input)); }
+        catch (e) { return errorJson(e); }
     },
     {
         name: "create_task",
-        description: `
-Create a new todo task.
-
-Use this tool whenever the user wants to:
-- create a task
-- add a todo
-- add a reminder
-- remember something
-- schedule work
-`,
+        description:
+            "Create a new todo task. " +
+            "Use when the user wants to add a task, set a reminder, or schedule work.",
         schema: CreateTaskSchema,
     }
 );
 
 export const getTasksTool = tool(
     async (input) => {
-        const result = await todoService.getTasks(input);
-        return JSON.stringify(result);
+        try { return toJson(await todoService.getTasks(input)); }
+        catch (e) { return errorJson(e); }
     },
     {
         name: "get_tasks",
-        description: `
-Retrieve tasks using filters.
-
-Examples:
-- Show my tasks
-- Show pending tasks
-- Show completed tasks
-- Show today's tasks
-- Show overdue tasks
-- Show high priority tasks
-`,
-        schema: GetTasksSchema,
+        description:
+            "Retrieve tasks with optional filters. " +
+            "Use for: listing tasks, showing pending/completed/overdue tasks, filtering by priority or tag.",
+        schema: GetTasksSchema.extend({
+            intent: z
+                .string()
+                .describe("Brief description of what to retrieve, e.g. 'all', 'pending', 'high priority overdue'"),
+        }),
     }
 );
 
 export const searchTasksTool = tool(
     async (input) => {
-        const result = await todoService.searchTasks(input);
-        return JSON.stringify(result);
+        try { return toJson(await todoService.searchTasks(input)); }
+        catch (e) { return errorJson(e); }
     },
     {
         name: "search_tasks",
-        description: `
-Search tasks by title or description.
-
-Examples:
-- Find grocery task
-- Search project
-- Find meeting
-`,
+        description:
+            "Full-text search across task titles and descriptions. " +
+            "Use when the user provides a keyword or phrase to find a specific task.",
         schema: SearchTaskSchema,
     }
 );
 
 export const updateTaskTool = tool(
     async (input) => {
-        const result = await todoService.updateTask(input);
-        return JSON.stringify(result);
+        try { return toJson(await todoService.updateTask(input)); }
+        catch (e) { return errorJson(e); }
     },
     {
         name: "update_task",
-        description: `
-Update any property of a task.
-
-Examples:
-- Rename task
-- Change due date
-- Change priority
-- Update description
-- Update tags
-`,
+        description:
+            "Update one or more properties of an existing task (title, description, priority, due date, tags, status). " +
+            "Requires the task ID — call get_tasks or search_tasks first if needed.",
         schema: UpdateTaskSchema,
     }
 );
 
 export const completeTaskTool = tool(
     async (input) => {
-        const result = await todoService.completeTask(input);
-        return JSON.stringify(result);
+        try { return toJson(await todoService.completeTask(input)); }
+        catch (e) { return errorJson(e); }
     },
     {
         name: "complete_task",
-        description: `
-Mark a task as completed or reopen it.
-`,
+        description:
+            "Mark a task as completed (or reopen it). " +
+            "Use when the user says a task is done, finished, or wants to undo a completion.",
         schema: CompleteTaskSchema,
     }
 );
 
 export const deleteTaskTool = tool(
     async (input) => {
-        const result = await todoService.deleteTask(input);
-        return JSON.stringify(result);
+        try { return toJson(await todoService.deleteTask(input)); }
+        catch (e) { return errorJson(e); }
     },
     {
         name: "delete_task",
-        description: `
-Delete a task by its ID.
-`,
+        description:
+            "Permanently delete a task by ID. " +
+            "Requires the task ID — call get_tasks or search_tasks first if you don't have it.",
         schema: DeleteTaskSchema,
     }
 );
 
 export const bulkUpdateTasksTool = tool(
     async (input) => {
-        const result = await todoService.bulkUpdateTasks(input);
-        return JSON.stringify(result);
+        try { return toJson(await todoService.bulkUpdateTasks(input)); }
+        catch (e) { return errorJson(e); }
     },
     {
         name: "bulk_update_tasks",
-        description: `
-Update multiple tasks at once.
-
-Examples:
-- Complete all overdue tasks
-- Mark all work tasks completed
-- Change all personal tasks to high priority
-`,
+        description:
+            "Update multiple tasks at once with the same changes. " +
+            "Use for bulk completions, priority changes, or status updates across many tasks.",
         schema: BulkUpdateTasksSchema,
     }
 );
 
 export const getStatisticsTool = tool(
     async () => {
-        const result = await todoService.getStatistics();
-        return JSON.stringify(result);
+        try { return toJson(await todoService.getStatistics()); }
+        catch (e) { return errorJson(e); }
     },
     {
         name: "get_statistics",
-        description: `
-Get statistics about the user's todo list.
-
-Examples:
-- How many tasks do I have?
-- Show my productivity
-- Count completed tasks
-`,
+        description:
+            "Return a summary of the todo list: total, pending, in-progress, completed, and cancelled counts. " +
+            "Use when the user asks for an overview, stats, or productivity summary.",
     }
 );
 
@@ -169,4 +151,6 @@ export const todoTools = [
     deleteTaskTool,
     bulkUpdateTasksTool,
     getStatisticsTool,
-];
+] as const;
+
+export type TodoToolName = (typeof todoTools)[number]["name"];

@@ -2,52 +2,90 @@ import { dbConnect } from "@/app/src/lib/mongodb";
 import { chat } from "../../src/agents/todo.agent";
 import { NextResponse } from "next/server";
 
+interface StreamEvent {
+    event: string;
+    name?: string;
+    data?: {
+        chunk?: {
+            content?: string;
+        };
+    };
+}
+
 await dbConnect();
 
+const encoder = new TextEncoder();
+
+function encodeEvent(payload: object): Uint8Array {
+    return encoder.encode(JSON.stringify(payload) + "\n");
+}
+
+//    POST /api/chat
 export async function POST(req: Request) {
     try {
         const body = await req.json();
+        const message: string | undefined = body.message;
+        const threadId: string = body.threadId ?? "default_session";
 
-        // 1. Extract the new single message and the optional threadId
-        const message = body.message;
-        const threadId = body.threadId || "default_session"; // Fallback ID
-
-        if (!message) {
+        if (!message?.trim()) {
             return NextResponse.json({ error: "Message is required." }, { status: 400 });
         }
 
-        // 2. Pass both to your agent
-        const eventStream = await chat(message, threadId);
+        const { selectedTools, stream: eventStream } = await chat(message, threadId);
 
-        const encoder = new TextEncoder();
+        /* 2. Wrap the LangGraph event stream in a Web ReadableStream for SSE. */
         const stream = new ReadableStream({
             async start(controller) {
                 try {
-                    for await (const event of eventStream) {
-                        if (event.event === "on_chat_model_stream") {
-                            const chunk = event.data.chunk;
-                            if (chunk && chunk.content) {
-                                controller.enqueue(encoder.encode(chunk.content));
+                    /* Immediately tell the client which tools were selected. */
+                    controller.enqueue(encodeEvent({ type: "router", tools: selectedTools }));
+
+                    for await (const raw of eventStream) {
+                        const event = raw as StreamEvent;
+
+                        switch (event.event) {
+                            case "on_tool_start":
+                                controller.enqueue(encodeEvent({ type: "tool", name: event.name }));
+                                break;
+
+                            case "on_chat_model_start":
+                                controller.enqueue(encodeEvent({ type: "thinking" }));
+                                break;
+
+                            case "on_chat_model_stream": {
+                                const content = event.data?.chunk?.content;
+                                if (content) {
+                                    controller.enqueue(encodeEvent({ type: "text", content }));
+                                }
+                                break;
                             }
+
+                            default:
+                                break;
                         }
                     }
+
+                    controller.enqueue(encodeEvent({ type: "done" }));
                 } catch (err) {
-                    console.error("Stream error:", err);
+                    console.error("[chat/stream] error:", err);
+                    /* Surface the error to the client so the UI can show a message. */
+                    controller.enqueue(encodeEvent({ type: "error", message: "Stream interrupted." }));
                 } finally {
                     controller.close();
                 }
-            }
+            },
         });
 
         return new Response(stream, {
             headers: {
-                "Content-Type": "text/plain; charset=utf-8",
+                "Content-Type": "application/x-ndjson",
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
             },
         });
+
     } catch (error) {
-        console.error("API Route Error:", error);
+        console.error("[chat/POST] error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

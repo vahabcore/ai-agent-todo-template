@@ -12,11 +12,15 @@
     "@langchain/core": "^1.2.1",
     "@langchain/langgraph": "^1.4.7",
     "@langchain/ollama": "^1.3.0",
+    "github-slugger": "^2.0.0",
     "langsmith": "^0.7.12",
     "mongoose": "^9.7.3",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
